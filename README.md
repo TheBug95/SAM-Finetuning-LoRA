@@ -1,4 +1,4 @@
-# SAM LoRA Fine-tuning - Nueva Estructura Organizada
+# SAM LoRA Fine-tuning
 
 ## 📁 Estructura del Proyecto
 
@@ -31,8 +31,7 @@ SAM finetuning LoRA/
 └── .gitignore                # Archivos a ignorar en Git
 ```
 
-## 🚀 Cómo Usar con la Nueva Estructura
-
+## 🚀 Cómo Usar 
 ### Opción 1: Quick Start (Recomendado)
 
 Desde cualquier ubicación dentro del proyecto:
@@ -71,30 +70,12 @@ cd "Utility Scripts"
 Para usar el proyecto en Google Colab:
 
 ```bash
-# Preparar paquete para Colab
-python "Utility Scripts/prepare_for_colab.py"
-
-# O usar directamente el notebook incluido
+# Usar directamente el notebook incluido
 # Subir SAM_LoRA_Fine_tuning_colab_setup.ipynb a Google Colab
 ```
 
-### Opción 5: Desde Python
 
-```python
-import sys
-from pathlib import Path
-
-# Agregar Core Modules al path
-sys.path.insert(0, str(Path("Core Modules")))
-
-# Ahora puedes importar
-from config import get_default_config
-from dataset import create_dataloaders
-from model import create_sam_lora_model
-from trainer import SAMTrainer
-```
-
-## 📝 Notas Importantes sobre la Nueva Estructura
+## 📝 Notas Importantes
 
 ### 1. Imports Automáticos
 
@@ -339,9 +320,7 @@ wget https://dl.fbaipublicfiles.com/segment_anything/sam_vit_b_01ec64.pth -O che
 
 ## 📄 Licencia
 
-Este proyecto utiliza SAM (Segment Anything Model) de Meta AI. Asegúrate de cumplir con sus términos de licencia.
-
-## 🤝 Contribuciones
+Este proyecto utiliza SAM (Segment Anything Model) de Meta AI.
 
 Las contribuciones son bienvenidas. Por favor, abre un issue o pull request para mejoras o correcciones.
 
