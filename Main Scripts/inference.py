@@ -226,6 +226,10 @@ def parse_args():
     parser.add_argument('--model_type', type=str, default='vit_b',
                        choices=['vit_b', 'vit_l', 'vit_h'],
                        help='SAM model type')
+    parser.add_argument('--lora_rank', type=int, default=8,
+                       help='LoRA rank (must match the checkpoint)')
+    parser.add_argument('--lora_alpha', type=int, default=16,
+                       help='LoRA alpha (must match the checkpoint)')
     parser.add_argument('--threshold', type=float, default=0.5,
                        help='Threshold for binary mask prediction')
     parser.add_argument('--batch_size', type=int, default=1,
@@ -272,6 +276,8 @@ def main():
     config = get_default_config()
     config.data.coco_root = args.data_root
     config.model.model_type = args.model_type
+    config.model.lora_rank = args.lora_rank
+    config.model.lora_alpha = args.lora_alpha
     config.device = args.device
     
     # Load model
