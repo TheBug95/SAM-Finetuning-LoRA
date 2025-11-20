@@ -17,6 +17,7 @@ import cv2
 class COCOSegmentationDataset(Dataset):
     """
     COCO format dataset for segmentation with SAM.
+    Binary classification: cataract (1) vs no cataract (0)
     """
     
     def __init__(
@@ -54,6 +55,11 @@ class COCOSegmentationDataset(Dataset):
         self.images = {img['id']: img for img in self.coco_data['images']}
         self.categories = {cat['id']: cat for cat in self.coco_data['categories']}
         
+        # Create binary category mapping
+        # Map 'cataract', 'mild', 'severe' -> 1 (cataract)
+        # Map 'normal' -> 0 (no cataract)
+        self.category_mapping = self._create_binary_category_mapping()
+        
         # Group annotations by image
         self.img_to_anns = {}
         for ann in self.coco_data['annotations']:
@@ -67,7 +73,31 @@ class COCOSegmentationDataset(Dataset):
                          if img_id in self.img_to_anns]
         
         print(f"Loaded {len(self.image_ids)} images with annotations")
-        print(f"Categories: {[cat['name'] for cat in self.categories.values()]}")
+        print(f"Original categories: {[cat['name'] for cat in self.categories.values()]}")
+        print(f"Binary mapping: {self.category_mapping}")
+        print(f"Classes: 0=no cataract, 1=cataract")
+    
+    def _create_binary_category_mapping(self) -> Dict[int, int]:
+        """
+        Create mapping from original category IDs to binary classes.
+        
+        Returns:
+            Dictionary mapping original category_id to binary class:
+                0 = no cataract (normal)
+                1 = cataract (cataract, mild, severe)
+        """
+        mapping = {}
+        for cat_id, cat_info in self.categories.items():
+            cat_name = cat_info['name'].lower()
+            if cat_name in ['cataract', 'mild', 'severe']:
+                mapping[cat_id] = 1  # Cataract class
+            elif cat_name == 'normal':
+                mapping[cat_id] = 0  # No cataract class
+            else:
+                # Default: if unknown category, treat as cataract
+                print(f"Warning: Unknown category '{cat_name}' (id={cat_id}), mapping to class 1 (cataract)")
+                mapping[cat_id] = 1
+        return mapping
     
     def __len__(self) -> int:
         return len(self.image_ids)
@@ -196,7 +226,10 @@ class COCOSegmentationDataset(Dataset):
                     point_coords_list.append(all_points)
                     point_labels_list.append(labels)
                 
-                category_ids.append(ann['category_id'])
+                # Map original category_id to binary class (0 or 1)
+                original_cat_id = ann['category_id']
+                binary_cat_id = self.category_mapping.get(original_cat_id, 1)  # Default to 1 if not found
+                category_ids.append(binary_cat_id)
         
         if len(masks) == 0:
             # Handle images with no valid masks by returning dummy data

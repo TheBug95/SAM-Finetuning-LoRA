@@ -8,7 +8,12 @@ from typing import Optional, List
 
 @dataclass
 class DataConfig:
-    """Data configuration"""
+    """Data configuration
+    
+    Note: The dataset uses binary classification:
+        - Class 0: No cataract (normal)
+        - Class 1: Cataract (includes cataract, mild, severe from original annotations)
+    """
     coco_root: str = "../Cataract COCO Segmentation/Cataract COCO Segmentation"
     train_ann_file: str = "train/_annotations.coco.json"
     val_ann_file: str = "valid/_annotations.coco.json"
@@ -18,6 +23,10 @@ class DataConfig:
     test_img_dir: str = "test"
     image_size: int = 1024  # SAM's default input size
     num_workers: int = 4
+    
+    # Class information
+    num_classes: int = 2  # Binary classification: cataract vs no cataract
+    class_names: List[str] = field(default_factory=lambda: ["no_cataract", "cataract"])
     
     def get_full_paths(self):
         """Get full paths for annotations and images"""
