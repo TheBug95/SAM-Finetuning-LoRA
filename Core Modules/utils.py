@@ -238,8 +238,14 @@ def calculate_dice(pred_mask: torch.Tensor, true_mask: torch.Tensor, threshold: 
     
     pred_mask = (pred_mask > threshold).float()
     
+    # Caso especial: si ambas máscaras son vacías, el modelo acertó (predijo "nada" y era "nada")
+    pred_sum = pred_mask.sum()
+    true_sum = true_mask.sum()
+    if pred_sum == 0 and true_sum == 0:
+        return 1.0
+    
     intersection = (pred_mask * true_mask).sum()
-    dice = (2. * intersection) / (pred_mask.sum() + true_mask.sum() + 1e-8)
+    dice = (2. * intersection) / (pred_sum + true_sum + 1e-8)
     
     return dice.item()
 

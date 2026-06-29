@@ -102,7 +102,8 @@ class SAMInference:
     def predict_batch(
         self,
         dataloader: DataLoader,
-        save_dir: Optional[str] = None
+        save_dir: Optional[str] = None,
+        masks_dir: Optional[str] = None
     ) -> Dict[str, float]:
         """
         Run inference on a batch of images.
@@ -110,6 +111,7 @@ class SAMInference:
         Args:
             dataloader: DataLoader with test images
             save_dir: Directory to save visualizations (optional)
+            masks_dir: Directory to save predicted SAM masks (optional)
         
         Returns:
             Dictionary with evaluation metrics
@@ -121,6 +123,10 @@ class SAMInference:
             save_dir = Path(save_dir)
             save_dir.mkdir(parents=True, exist_ok=True)
         
+        if masks_dir is not None:
+            masks_dir = Path(masks_dir)
+            masks_dir.mkdir(parents=True, exist_ok=True)
+        
         results = []
         
         for batch_idx, batch in enumerate(tqdm(dataloader, desc="Inference")):
@@ -130,11 +136,13 @@ class SAMInference:
             point_coords_list = batch['point_coords']
             point_labels_list = batch['point_labels']
             image_ids = batch['image_ids']
+            image_names = batch.get('image_names', [None] * len(images))
             
             # Process each image
             for i in range(len(images)):
                 image = images[i:i+1]
                 true_masks = masks_list[i]
+                image_name = image_names[i]
                 
                 boxes = boxes_list[i] if boxes_list[i] is not None else None
                 point_coords = point_coords_list[i] if point_coords_list[i] is not None else None
@@ -178,6 +186,15 @@ class SAMInference:
                         'dice': dice
                     })
                     
+                    # Save predicted mask using the original image file name
+                    if masks_dir is not None and image_name is not None:
+                        base_name = Path(image_name).stem
+                        mask_filename = f"{base_name}_obj_{obj_idx}.png"
+                        mask_path = masks_dir / mask_filename
+                        
+                        mask_np = (pred_mask.numpy() * 255).astype(np.uint8)
+                        cv2.imwrite(str(mask_path), mask_np)
+                    
                     # Save visualization for first object of first few images
                     if save_dir is not None and batch_idx < 10 and obj_idx == 0:
                         # Convert image to numpy
@@ -215,8 +232,10 @@ class SAMInference:
 def parse_args():
     parser = argparse.ArgumentParser(description='SAM LoRA Inference')
     
-    parser.add_argument('--checkpoint', type=str, required=True,
-                       help='Path to trained model checkpoint')
+    parser.add_argument('--checkpoint', type=str, default=None,
+                       help='Path to trained LoRA checkpoint (optional)')
+    parser.add_argument('--sam_checkpoint', type=str, default=None,
+                       help='Path to pretrained SAM checkpoint (e.g. sam_vit_b_01ec64.pth)')
     parser.add_argument('--dataset_type', type=str, default='coco',
                        choices=['coco', 'glaucoma'],
                        help='Dataset type: coco or glaucoma')
@@ -249,6 +268,10 @@ def parse_args():
                        help='Output directory for results')
     parser.add_argument('--save_visualizations', action='store_true',
                        help='Save visualization images')
+    parser.add_argument('--save_masks', action='store_true', default=True,
+                       help='Save predicted SAM masks to a separate folder')
+    parser.add_argument('--masks_dir', type=str, default='sam_masks',
+                       help='Subdirectory name for saved masks (inside output_dir)')
     parser.add_argument('--seed', type=int, default=42,
                        help='Random seed')
     
@@ -271,7 +294,12 @@ def main():
     print("\n" + "="*50)
     print("SAM LoRA Inference")
     print("="*50)
-    print(f"Checkpoint: {args.checkpoint}")
+    if args.checkpoint:
+        print(f"LoRA checkpoint: {args.checkpoint}")
+    else:
+        print("LoRA checkpoint: none (using base SAM)")
+    if args.sam_checkpoint:
+        print(f"SAM checkpoint: {args.sam_checkpoint}")
     print(f"Dataset type: {args.dataset_type}")
     if args.dataset_type == "glaucoma":
         print(f"Glaucoma root: {args.glaucoma_root}")
@@ -290,12 +318,15 @@ def main():
     config.model.model_type = args.model_type
     config.model.lora_rank = args.lora_rank
     config.model.lora_alpha = args.lora_alpha
+    if args.sam_checkpoint:
+        config.model.checkpoint_path = args.sam_checkpoint
     config.device = args.device
     
     # Load model
     print("Loading model...")
     model = create_sam_lora_model(config, device=device)
-    model.load_checkpoint(args.checkpoint, load_optimizer=False)
+    if args.checkpoint:
+        model.load_checkpoint(args.checkpoint, load_optimizer=False)
     print()
     
     # Create dataset
@@ -357,7 +388,8 @@ def main():
     # Run inference
     print("Running inference...")
     viz_dir = output_dir / 'visualizations' if args.save_visualizations else None
-    metrics, results = inference.predict_batch(dataloader, save_dir=viz_dir)
+    masks_dir = output_dir / args.masks_dir if args.save_masks else None
+    metrics, results = inference.predict_batch(dataloader, save_dir=viz_dir, masks_dir=masks_dir)
     
     # Print results
     print("\n" + "="*50)
@@ -381,6 +413,9 @@ def main():
     
     if args.save_visualizations:
         print(f"Visualizations saved to {viz_dir}")
+    
+    if args.save_masks:
+        print(f"Predicted masks saved to {masks_dir}")
     
     print("\nInference complete!")
 

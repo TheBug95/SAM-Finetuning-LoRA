@@ -109,6 +109,66 @@ Antes de comenzar a entrenar, verifica que todo esté configurado:
 - **`prepare_for_colab.py`**: Preparar paquete optimizado para Google Colab
 - **`run_training.ps1`**: Script PowerShell con menú interactivo (Windows)
 
+## 🔍 Inferencia
+
+El script `Main Scripts/inference.py` puede ejecutarse en tres modalidades:
+
+### 1. SAM base (sin entrenar)
+
+Usa los pesos preentrenados oficiales de SAM. No es necesario pasar `--checkpoint`, pero sí debes descargar el checkpoint oficial correspondiente a `--model_type`.
+
+```bash
+python "Main Scripts/inference.py" \
+    --sam_checkpoint checkpoints/sam_vit_b_01ec64.pth \
+    --data_root "Cataract COCO Segmentation/Cataract COCO Segmentation" \
+    --split test \
+    --output_dir ./resultados_sam_base
+```
+
+### 2. Modelo entrenado con LoRA
+
+Carga un checkpoint propio generado durante el entrenamiento. Si el checkpoint solo contiene los pesos LoRA, también puedes pasar `--sam_checkpoint` para cargar los pesos base de SAM.
+
+```bash
+python "Main Scripts/inference.py" \
+    --sam_checkpoint checkpoints/sam_vit_b_01ec64.pth \
+    --checkpoint outputs/sam_lora_cataract/checkpoints/best_model.pt \
+    --data_root "Cataract COCO Segmentation/Cataract COCO Segmentation" \
+    --split test \
+    --output_dir ./resultados_lora \
+    --save_visualizations
+```
+
+### 3. Checkpoint autocontenido
+
+Si tu checkpoint de entrenamiento ya incluye los pesos base de SAM, basta con:
+
+```bash
+python "Main Scripts/inference.py" \
+    --checkpoint outputs/sam_lora_cataract/checkpoints/best_model.pt \
+    --data_root "Cataract COCO Segmentation/Cataract COCO Segmentation" \
+    --split test \
+    --output_dir ./resultados_lora
+```
+
+### Máscaras generadas
+
+Por defecto, el script guarda todas las máscaras predichas por SAM en la subcarpeta `sam_masks` dentro de `--output_dir`. Cada máscara se nombra con el nombre de la imagen de origen:
+
+```text
+resultados_lora/
+├── sam_masks/
+│   ├── imagen_001_obj_0.png
+│   ├── imagen_001_obj_1.png
+│   ├── imagen_002_obj_0.png
+│   └── ...
+├── visualizations/
+├── metrics.json
+└── detailed_results.json
+```
+
+Puedes cambiar el nombre de la carpeta con `--masks_dir`.
+
 ## 🔬 Dataset de Glaucoma (Todo Dataset)
 
 Este repositorio ahora también soporta el dataset de glaucoma `Todo Dataset/` para segmentación del **optic disc** (disco óptico) en imágenes de fondo de ojo. Por defecto se entrena únicamente con la máscara del disco; la máscara del cup está disponible pero no se usa.
@@ -134,6 +194,7 @@ python "Main Scripts/train.py" \
 python "Main Scripts/inference.py" \
     --dataset_type glaucoma \
     --glaucoma_root "Todo Dataset" \
+    --sam_checkpoint checkpoints/sam_vit_b_01ec64.pth \
     --checkpoint outputs/sam_lora_glaucoma/checkpoints/best_model.pt \
     --split test \
     --save_visualizations

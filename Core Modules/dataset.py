@@ -288,7 +288,8 @@ class COCOSegmentationDataset(Dataset):
             'image': image,
             'masks': torch.from_numpy(masks).float(),
             'category_ids': torch.tensor(category_ids, dtype=torch.long),
-            'image_id': torch.tensor(img_id, dtype=torch.long)
+            'image_id': torch.tensor(img_id, dtype=torch.long),
+            'image_name': img_info['file_name']
         }
         
         if self.use_box_prompts and len(boxes) > 0:
@@ -363,7 +364,8 @@ def collate_fn(batch: List[Dict]) -> Dict[str, torch.Tensor]:
         'point_coords': [item.get('point_coords', None) for item in batch],
         'point_labels': [item.get('point_labels', None) for item in batch],
         'category_ids': [item['category_ids'] for item in batch],
-        'image_ids': torch.stack([item['image_id'] for item in batch])
+        'image_ids': torch.stack([item['image_id'] for item in batch]),
+        'image_names': [item['image_name'] for item in batch]
     }
 
 
@@ -642,7 +644,8 @@ class GlaucomaDataset(Dataset):
             'image': image,
             'masks': torch.from_numpy(masks).float(),
             'category_ids': torch.tensor(category_ids, dtype=torch.long),
-            'image_id': torch.tensor(item['id'], dtype=torch.long)
+            'image_id': torch.tensor(item['id'], dtype=torch.long),
+            'image_name': image_filename
         }
         
         if self.use_box_prompts and len(boxes) > 0:
