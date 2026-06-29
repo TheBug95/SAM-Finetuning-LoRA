@@ -14,6 +14,7 @@ class DataConfig:
         - Class 0: No cataract (normal)
         - Class 1: Cataract (includes cataract, mild, severe from original annotations)
     """
+    dataset_type: str = "coco"  # 'coco' or 'glaucoma'
     coco_root: str = "../Cataract COCO Segmentation/Cataract COCO Segmentation"
     train_ann_file: str = "train/_annotations.coco.json"
     val_ann_file: str = "valid/_annotations.coco.json"
@@ -38,6 +39,57 @@ class DataConfig:
             'val_img': os.path.join(self.coco_root, self.val_img_dir),
             'test_img': os.path.join(self.coco_root, self.test_img_dir)
         }
+
+
+@dataclass
+class GlaucomaDataConfig:
+    """Data configuration for Glaucoma dataset (Todo Dataset)
+    
+    Dataset structure:
+        - Images: {id}_{left|right}.jpg
+        - Masks: {id}_{left|right}_cup.npy, {id}_{left|right}_disc.npy
+        - Split: split.json with 'train', 'test', 'validation' keys
+        - Labels: 'Normal' (no masks) and 'Pathological' (with cup/disc masks)
+    
+    Classes:
+        - Class 0: optic disc (by default)
+    
+    Note:
+        By default only the optic disc mask is used for training.
+        The cup mask is available but not used.
+    """
+    dataset_root: str = "../Todo Dataset"
+    split_file: str = "split.json"
+    image_size: int = 1024  # SAM's default input size
+    num_workers: int = 4
+    
+    # Class information
+    num_classes: int = 1
+    class_names: List[str] = field(default_factory=lambda: ["optic_disc"])
+    
+    # Mask configuration
+    mask_format: str = "npy"  # 'npy' or 'png'
+    mask_suffixes: List[str] = field(default_factory=lambda: ["disc"])  # Only optic disc by default
+    
+    # If True, only use images with masks for segmentation training.
+    # If False, also include images without masks with empty masks.
+    use_only_labeled: bool = False
+    
+    def get_split_file_path(self):
+        """Get path to split file"""
+        return os.path.join(self.dataset_root, self.split_file)
+    
+    def get_image_path(self, filename: str) -> str:
+        """Get full path to image"""
+        return os.path.join(self.dataset_root, filename)
+    
+    def get_mask_path(self, image_filename: str, mask_type: str) -> str:
+        """Get full path to mask file"""
+        base = image_filename.replace('.jpg', '')
+        if self.mask_format == "npy":
+            return os.path.join(self.dataset_root, f"{base}_{mask_type}.npy")
+        else:
+            return os.path.join(self.dataset_root, f"{base}_{mask_type}.png")
 
 
 @dataclass
@@ -116,6 +168,7 @@ class Config:
     """Main configuration"""
     # Sub-configs
     data: DataConfig = field(default_factory=DataConfig)
+    glaucoma_data: GlaucomaDataConfig = field(default_factory=GlaucomaDataConfig)
     model: ModelConfig = field(default_factory=ModelConfig)
     training: TrainingConfig = field(default_factory=TrainingConfig)
     optuna: OptunaConfig = field(default_factory=OptunaConfig)

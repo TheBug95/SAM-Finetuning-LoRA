@@ -23,9 +23,15 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Train SAM with LoRA')
     
     # Data
+    parser.add_argument('--dataset_type', type=str, default='coco',
+                       choices=['coco', 'glaucoma'],
+                       help='Dataset type: coco or glaucoma')
     parser.add_argument('--data_root', type=str, 
                        default='../Cataract COCO Segmentation/Cataract COCO Segmentation',
                        help='Root directory of COCO dataset')
+    parser.add_argument('--glaucoma_root', type=str,
+                       default='../Todo Dataset',
+                       help='Root directory of Glaucoma dataset (Todo Dataset)')
     parser.add_argument('--image_size', type=int, default=1024,
                        help='Input image size')
     
@@ -90,9 +96,15 @@ def main():
     config = get_default_config()
     
     # Update config with command line arguments
+    config.data.dataset_type = args.dataset_type
     config.data.coco_root = args.data_root
     config.data.image_size = args.image_size
     config.data.num_workers = args.num_workers
+    
+    # Glaucoma dataset configuration
+    config.glaucoma_data.dataset_root = args.glaucoma_root
+    config.glaucoma_data.image_size = args.image_size
+    config.glaucoma_data.num_workers = args.num_workers
     
     config.model.model_type = args.model_type
     config.model.checkpoint_path = args.checkpoint
@@ -129,7 +141,13 @@ def main():
     print("\n" + "="*50)
     print("Configuration:")
     print("="*50)
-    print(f"Data root: {config.data.coco_root}")
+    print(f"Dataset type: {config.data.dataset_type}")
+    if config.data.dataset_type == "glaucoma":
+        print(f"Glaucoma root: {config.glaucoma_data.dataset_root}")
+        print(f"Classes: {config.glaucoma_data.class_names}")
+    else:
+        print(f"Data root: {config.data.coco_root}")
+        print(f"Classes: {config.data.class_names}")
     print(f"Model type: {config.model.model_type}")
     print(f"LoRA rank: {config.model.lora_rank}")
     print(f"Batch size: {config.training.batch_size}")

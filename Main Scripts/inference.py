@@ -19,7 +19,7 @@ import cv2
 from PIL import Image
 
 from config import Config, get_default_config
-from dataset import COCOSegmentationDataset, get_transforms, collate_fn
+from dataset import COCOSegmentationDataset, GlaucomaDataset, get_transforms, collate_fn
 from model import create_sam_lora_model
 from utils import (
     set_seed, get_device, calculate_iou, calculate_dice,
@@ -217,9 +217,15 @@ def parse_args():
     
     parser.add_argument('--checkpoint', type=str, required=True,
                        help='Path to trained model checkpoint')
+    parser.add_argument('--dataset_type', type=str, default='coco',
+                       choices=['coco', 'glaucoma'],
+                       help='Dataset type: coco or glaucoma')
     parser.add_argument('--data_root', type=str,
                        default='../Cataract COCO Segmentation/Cataract COCO Segmentation',
                        help='Root directory of COCO dataset')
+    parser.add_argument('--glaucoma_root', type=str,
+                       default='../Todo Dataset',
+                       help='Root directory of Glaucoma dataset (Todo Dataset)')
     parser.add_argument('--split', type=str, default='test',
                        choices=['train', 'valid', 'test'],
                        help='Dataset split to evaluate on')
@@ -266,7 +272,11 @@ def main():
     print("SAM LoRA Inference")
     print("="*50)
     print(f"Checkpoint: {args.checkpoint}")
-    print(f"Data root: {args.data_root}")
+    print(f"Dataset type: {args.dataset_type}")
+    if args.dataset_type == "glaucoma":
+        print(f"Glaucoma root: {args.glaucoma_root}")
+    else:
+        print(f"Data root: {args.data_root}")
     print(f"Split: {args.split}")
     print(f"Device: {device}")
     print(f"Output directory: {output_dir}")
@@ -274,7 +284,9 @@ def main():
     
     # Create config
     config = get_default_config()
+    config.data.dataset_type = args.dataset_type
     config.data.coco_root = args.data_root
+    config.glaucoma_data.dataset_root = args.glaucoma_root
     config.model.model_type = args.model_type
     config.model.lora_rank = args.lora_rank
     config.model.lora_alpha = args.lora_alpha
@@ -288,26 +300,41 @@ def main():
     
     # Create dataset
     print(f"Loading {args.split} dataset...")
-    paths = config.data.get_full_paths()
     
-    if args.split == 'train':
-        ann_file = paths['train_ann']
-        img_dir = paths['train_img']
-    elif args.split == 'valid':
-        ann_file = paths['val_ann']
-        img_dir = paths['val_img']
-    else:  # test
-        ann_file = paths['test_ann']
-        img_dir = paths['test_img']
-    
-    dataset = COCOSegmentationDataset(
-        annotation_file=ann_file,
-        image_dir=img_dir,
-        transforms=get_transforms(config.data.image_size, is_train=False),
-        image_size=config.data.image_size,
-        use_point_prompts=True,
-        use_box_prompts=True
-    )
+    if args.dataset_type == "glaucoma":
+        dataset = GlaucomaDataset(
+            split_file=config.glaucoma_data.get_split_file_path(),
+            dataset_root=config.glaucoma_data.dataset_root,
+            split=args.split,
+            transforms=get_transforms(config.glaucoma_data.image_size, is_train=False),
+            image_size=config.glaucoma_data.image_size,
+            use_point_prompts=True,
+            use_box_prompts=True,
+            mask_format=config.glaucoma_data.mask_format,
+            mask_suffixes=config.glaucoma_data.mask_suffixes,
+            use_only_labeled=config.glaucoma_data.use_only_labeled
+        )
+    else:
+        paths = config.data.get_full_paths()
+        
+        if args.split == 'train':
+            ann_file = paths['train_ann']
+            img_dir = paths['train_img']
+        elif args.split == 'valid':
+            ann_file = paths['val_ann']
+            img_dir = paths['val_img']
+        else:  # test
+            ann_file = paths['test_ann']
+            img_dir = paths['test_img']
+        
+        dataset = COCOSegmentationDataset(
+            annotation_file=ann_file,
+            image_dir=img_dir,
+            transforms=get_transforms(config.data.image_size, is_train=False),
+            image_size=config.data.image_size,
+            use_point_prompts=True,
+            use_box_prompts=True
+        )
     
     dataloader = DataLoader(
         dataset,

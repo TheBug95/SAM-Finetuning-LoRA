@@ -109,6 +109,36 @@ Antes de comenzar a entrenar, verifica que todo esté configurado:
 - **`prepare_for_colab.py`**: Preparar paquete optimizado para Google Colab
 - **`run_training.ps1`**: Script PowerShell con menú interactivo (Windows)
 
+## 🔬 Dataset de Glaucoma (Todo Dataset)
+
+Este repositorio ahora también soporta el dataset de glaucoma `Todo Dataset/` para segmentación del **optic disc** (disco óptico) en imágenes de fondo de ojo. Por defecto se entrena únicamente con la máscara del disco; la máscara del cup está disponible pero no se usa.
+
+Para más detalles, consulta la guía completa:
+- **[GLAUCOMA_DATASET_GUIDE.md](GLAUCOMA_DATASET_GUIDE.md)**
+
+Comandos rápidos:
+
+```bash
+# Verificar dataset
+python "Utility Scripts/verify_setup.py" --dataset_type glaucoma
+
+# Entrenar
+python "Main Scripts/train.py" \
+    --dataset_type glaucoma \
+    --glaucoma_root "Todo Dataset" \
+    --checkpoint checkpoints/sam_vit_b_01ec64.pth \
+    --batch_size 2 \
+    --experiment_name sam_lora_glaucoma
+
+# Inferir
+python "Main Scripts/inference.py" \
+    --dataset_type glaucoma \
+    --glaucoma_root "Todo Dataset" \
+    --checkpoint outputs/sam_lora_glaucoma/checkpoints/best_model.pt \
+    --split test \
+    --save_visualizations
+```
+
 Este proyecto utiliza SAM (Segment Anything Model) de Meta AI.
 
 Las contribuciones son bienvenidas. Por favor, abre un issue o pull request para mejoras o correcciones.

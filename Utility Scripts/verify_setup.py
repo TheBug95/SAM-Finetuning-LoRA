@@ -166,6 +166,75 @@ def check_data():
     return all_ok
 
 
+def check_glaucoma_data(mask_suffixes=None):
+    """Check if Glaucoma dataset (Todo Dataset) exists and is valid"""
+    if mask_suffixes is None:
+        mask_suffixes = ["disc"]  # Default: only optic disc
+    
+    print("\n📊 Checking Glaucoma dataset (Todo Dataset)...")
+    print(f"   Mask types checked: {mask_suffixes}")
+    
+    data_root = "../Todo Dataset"
+    
+    if not os.path.exists(data_root):
+        print(f"   ✗ Data directory not found: {data_root}")
+        return False
+    
+    # Check split file
+    split_file = os.path.join(data_root, "split.json")
+    if not os.path.exists(split_file):
+        print(f"   ✗ split.json not found")
+        return False
+    
+    try:
+        with open(split_file, 'r', encoding='utf-8') as f:
+            split_data = json.load(f)
+        
+        print(f"   ✓ split.json found")
+        print(f"   ✓ Splits: {list(split_data.keys())}")
+        
+        all_ok = True
+        total_with_masks = 0
+        total_without_masks = 0
+        
+        for split_name, items in split_data.items():
+            with_masks = 0
+            without_masks = 0
+            
+            for item in items:
+                img_file = item['image_filename']
+                base = img_file.replace('.jpg', '')
+                
+                has_all_masks = all(
+                    os.path.exists(os.path.join(data_root, f"{base}_{suffix}.npy"))
+                    for suffix in mask_suffixes
+                )
+                
+                if has_all_masks:
+                    with_masks += 1
+                else:
+                    without_masks += 1
+            
+            total_with_masks += with_masks
+            total_without_masks += without_masks
+            
+            print(f"   ✓ {split_name}: {len(items)} images, {with_masks} with masks, {without_masks} without masks")
+        
+        print(f"\n   Total images with segmentation masks: {total_with_masks}")
+        print(f"   Total images without masks: {total_without_masks}")
+        print(f"   Classes: 0=optic_disc")
+        
+        if total_with_masks == 0:
+            print(f"   ✗ No images with masks found")
+            return False
+        
+        return True
+        
+    except Exception as e:
+        print(f"   ✗ Error reading split.json: {e}")
+        return False
+
+
 def check_disk_space():
     """Check available disk space"""
     print("\n💾 Checking disk space...")
@@ -246,7 +315,7 @@ def test_imports():
         from config import get_default_config
         print("   ✓ config module")
         
-        from dataset import COCOSegmentationDataset
+        from dataset import COCOSegmentationDataset, GlaucomaDataset
         print("   ✓ dataset module")
         
         from model import create_sam_lora_model
@@ -266,7 +335,16 @@ def test_imports():
 
 def main():
     """Run all verification checks"""
+    import argparse
+    
+    parser = argparse.ArgumentParser(description='Verify SAM LoRA setup')
+    parser.add_argument('--dataset_type', type=str, default='coco',
+                       choices=['coco', 'glaucoma'],
+                       help='Dataset type to verify')
+    args = parser.parse_args()
+    
     print_header("SAM LoRA Setup Verification")
+    print(f"\nDataset type: {args.dataset_type}")
     print("\nThis script will verify that everything is set up correctly.")
     
     results = {
@@ -274,11 +352,16 @@ def main():
         'PyTorch': check_pytorch(),
         'Dependencies': check_dependencies(),
         'SAM checkpoint': check_sam_checkpoint(),
-        'COCO data': check_data(),
         'Disk space': check_disk_space(),
         'File structure': check_file_structure(),
         'Module imports': test_imports()
     }
+    
+    # Check appropriate dataset
+    if args.dataset_type == 'glaucoma':
+        results['Glaucoma data'] = check_glaucoma_data()
+    else:
+        results['COCO data'] = check_data()
     
     # Summary
     print_header("Verification Summary")
@@ -297,9 +380,13 @@ def main():
     if all_passed:
         print("\n🎉 All checks passed! You're ready to start training.")
         print("\nNext steps:")
-        print("  1. Run quickstart: python quickstart.py")
-        print("  2. Or start training: python train.py --checkpoint checkpoints/sam_vit_b_01ec64.pth")
-        print("  3. Or run with menu: .\\run_training.ps1")
+        if args.dataset_type == 'glaucoma':
+            print("  1. Train: python \"Main Scripts/train.py\" --dataset_type glaucoma --checkpoint checkpoints/sam_vit_b_01ec64.pth")
+            print("  2. Infer: python \"Main Scripts/inference.py\" --dataset_type glaucoma --checkpoint <path_to_best_model.pt>")
+        else:
+            print("  1. Run quickstart: python quickstart.py")
+            print("  2. Or start training: python \"Main Scripts/train.py\" --checkpoint checkpoints/sam_vit_b_01ec64.pth")
+            print("  3. Or run with menu: .\\run_training.ps1")
     else:
         print("\n⚠️  Some checks failed. Please fix the issues above before training.")
         print("\nCommon solutions:")

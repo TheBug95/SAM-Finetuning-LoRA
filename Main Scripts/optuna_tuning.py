@@ -178,9 +178,15 @@ def objective(trial: optuna.Trial, base_config: Config, device: torch.device) ->
 def parse_args():
     parser = argparse.ArgumentParser(description='Optuna hyperparameter optimization for SAM LoRA')
     
+    parser.add_argument('--dataset_type', type=str, default='coco',
+                       choices=['coco', 'glaucoma'],
+                       help='Dataset type: coco or glaucoma')
     parser.add_argument('--data_root', type=str,
                        default='../Cataract COCO Segmentation/Cataract COCO Segmentation',
                        help='Root directory of COCO dataset')
+    parser.add_argument('--glaucoma_root', type=str,
+                       default='../Todo Dataset',
+                       help='Root directory of Glaucoma dataset (Todo Dataset)')
     parser.add_argument('--model_type', type=str, default='vit_b',
                        choices=['vit_b', 'vit_l', 'vit_h'],
                        help='SAM model type')
@@ -210,7 +216,9 @@ def main():
     
     # Create base config
     config = get_default_config()
+    config.data.dataset_type = args.dataset_type
     config.data.coco_root = args.data_root
+    config.glaucoma_data.dataset_root = args.glaucoma_root
     config.model.model_type = args.model_type
     config.model.checkpoint_path = args.checkpoint
     config.seed = args.seed
